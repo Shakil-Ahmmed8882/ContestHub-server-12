@@ -1,0 +1,37 @@
+Users Collection (Name: users):
+
+Stores user information such as name, email, password, profile picture, and role.
+Contests Collection (Name: contests):
+
+Stores contest-related information like name, description, image URL, tags, creator ID, participation count, and deadline.
+Contest Submissions Collection (Name: contest_submissions):
+
+Stores submissions made by participants for each contest. It includes details like contest ID, participant ID, and submission details.
+Contest Participants Collection (Name: contest_participants):
+
+Stores the participants' information for contests, including contest ID, participant ID, registration status, and payment details.
+
+
+
+
+<!-- 
+constests collection idea
+{
+  contestName: "Design Challenge", // Name of the contest
+  description: "Create innovative designs using modern tools.", // Description of the contest
+  imageURL: "https://example.com/design_challenge_image.jpg", // URL of the contest image
+  tags: ["design", "creative", "innovation"], // Tags related to the contest
+  creatorId: ObjectId("creator_id_1"), // ID of the contest creator
+  participationCount: 50, // Number of participants
+  deadline: new Date("2023-12-31"), // Deadline for contest submissions
+},
+{
+  contestName: "Coding Competition", // Name of the contest
+  description: "Showcase coding skills in various programming languages.", // Description of the contest
+  imageURL: "https://example.com/coding_competition_image.jpg", // URL of the contest image
+  tags: ["coding", "programming", "challenge"], // Tags related to the contest
+  creatorId: ObjectId("creator_id_2"), // ID of the contest creator
+  participationCount: 80, // Number of participants
+  deadline: new Date("2023-11-30"), // Deadline for contest submissions
+},
+ -->
