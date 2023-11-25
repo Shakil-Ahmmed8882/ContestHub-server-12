@@ -10,7 +10,7 @@ require("dotenv").config();
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174/"],
+    origin: ["http://localhost:5173", "http://localhost:5174"],
     credentials: true,
   })
 );
@@ -29,7 +29,47 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // create database here
-    const menuCollection = client.db("BistroBoss").collection("menu");
+    const contestCollection = client.db("ContestCraft").collection("contests");
+    const userCollection = client.db("ContestCraft").collection("users");
+
+    //======== Contest ==============
+    //get all by type
+    app.get('/contests',async(req,res)=> {
+      const {type} = req.query
+      const result = await contestCollection.find({type:type}).toArray()
+      res.send(result)
+    })
+
+    // get single by id
+    app.get('/contest/',async(req,res)=> {
+      const {id} = req.query
+      const result = await contestCollection.findOne({_id:new ObjectId(id)})
+      return res.send(result)
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+    // ================== User post api ==================
+    app.post('/createUser',async(req,res)=> {
+      const {email} = req.query
+      const user = req.body
+      
+      const isUserExist = await userCollection.findOne({email:email})
+      if(isUserExist) return 
+
+      const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
+
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -42,9 +82,9 @@ run().catch(console.dir);
 
 
 app.get("/", (req, res) => {
-  res.send("Bistro boss is running");
+  res.send("ContestCraft is running");
 });
 
 app.listen(port, () => {
-  console.log(`Bistro boss is running on port ${port}`);
+  console.log(`ContestCraft is running on port ${port}`);
 });
