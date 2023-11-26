@@ -34,6 +34,10 @@ async function run() {
     const contestCollection = client.db("ContestCraft").collection("contests");
     const userCollection = client.db("ContestCraft").collection("users");
 
+
+     /* ====================================
+              GET METHOD
+     ====================================*/
     //======== Contest ==============
     //get all by type
     app.get("/contests", async (req, res) => {
@@ -69,15 +73,23 @@ async function run() {
       }
     });
 
+    // get contests based on creator id
+    app.get('/contests/:id',async(req,res)=> {
+      const {id} = req.params
+      const result = await contestCollection.find({creatorID:id}).toArray()
+      res.send(result)
+    })
+
+
     //  ============= user ===============
     app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray();
       return res.send(result);
     });
 
-    // ====================================
-    //Post method
-    // ====================================
+    /* ====================================
+              POST METHOD
+     ====================================*/
     //user
     app.post("/createUser", async (req, res) => {
       const { email } = req.query;
@@ -132,7 +144,10 @@ async function run() {
     //   })
     // })
 
-    // ================== Patch method ==================
+
+  /* ====================================
+              PATCH METHOD
+     ====================================*/
     // Increasing the new participant number
     app.patch("/participateContest", async (req, res) => {
       const { id, userEmail } = req.body;
@@ -210,9 +225,10 @@ async function run() {
   })
 
 
-  // ====================================
-    //Delete method
-    // ====================================
+
+  /* ====================================
+              DELETE METHOD
+     ====================================*/
     //user
     app.delete('/user',async(req,res)=>{
       const {id} = req.query
