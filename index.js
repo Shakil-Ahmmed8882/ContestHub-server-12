@@ -90,6 +90,28 @@ async function run() {
       res.send(result);
     });
 
+    // create contest 
+    app.post('/creatContest',async(req,res)=> {
+
+      const {email} = req.query
+      const contestData = req.body
+      // get the contest creotof to store id 
+      const contestCreator = await userCollection.findOne({email:email})
+      contestData.creatorID = contestCreator._id
+
+      // add to the database
+      const result = await contestCollection.insertOne(contestData)
+      res.send(result)  
+    })
+
+
+
+
+
+
+
+
+
     // =========== payment ==========
     // // payment intent
     // app.post("/create-payment-intent", async (req, res) => {
