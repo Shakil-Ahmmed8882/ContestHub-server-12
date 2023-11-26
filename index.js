@@ -175,6 +175,19 @@ async function run() {
       }
     });
 
+    //contest
+    app.patch("/contest", async (req, res) => {
+      const { id } = req.query;
+      
+      const result = await contestCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: {status:'approved' } }
+      );
+
+      res.send(result)
+  })
+
+
   // ====================================
     //Delete method
     // ====================================
