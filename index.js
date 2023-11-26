@@ -3,10 +3,11 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 // const stripe = require('stripe')(process.env.VITE_STRIPE_SECRET_KEY);
 require("dotenv").config();
 
-// var jwt = require("jsonwebtoken");
+
 // Middle ware
 app.use(express.json());
 app.use(
@@ -33,6 +34,24 @@ async function run() {
     // create database here
     const contestCollection = client.db("ContestCraft").collection("contests");
     const userCollection = client.db("ContestCraft").collection("users");
+
+
+
+
+
+    /* ====================================
+              JWT API
+     ====================================*/
+     // jwt related api
+     app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      res.send({ token });
+    })
+
+
+
+
 
     /* ====================================
               GET METHOD
