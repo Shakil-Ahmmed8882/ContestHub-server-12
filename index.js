@@ -71,7 +71,7 @@ async function run() {
 
     //  ============= user ===============
     app.get("/users", async (req, res) => {
-      const result = await contestCollection.find().toArray();
+      const result = await userCollection.find().toArray();
       return res.send(result);
     });
 
@@ -146,6 +146,31 @@ async function run() {
       );
       res.send(result);
     });
+  
+    // change role
+   // Update the role for a specific user based on the received data
+app.patch('/role', async (req, res) => {
+  const { role, userId } = req.body;
+  
+  // Check if role and userId are provided
+  if (!role || !userId) {
+    return res.status(400).json({ error: 'Role and User ID are required' });
+  }
+
+  try {
+    // Updating the role for the user with the given userId
+    const result = await userCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { role: role } }
+    );
+    res.send(result)
+
+  } catch (error) {
+    console.error('Error updating role:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
