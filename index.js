@@ -6,7 +6,6 @@ const cors = require("cors");
 // const stripe = require('stripe')(process.env.VITE_STRIPE_SECRET_KEY);
 require("dotenv").config();
 
-
 // var jwt = require("jsonwebtoken");
 // Middle ware
 app.use(express.json());
@@ -37,68 +36,57 @@ async function run() {
 
     //======== Contest ==============
     //get all by type
-    app.get('/contests',async(req,res)=> {
-      const {type} = req.query
-      const result = await contestCollection.find({type:type}).toArray()
-      res.send(result)
-    })
+    app.get("/contests", async (req, res) => {
+      const { type } = req.query;
+
+      let query = {};
+
+      if (type) {
+        query = { type: type };
+      }
+      const result = await contestCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // get single by id
-    app.get('/contest/', async (req, res) => {
-      try {
-        const { id } = req.query;
-    
-        if (!id) {
-          return res.status(400).send('Contest ID is required');
+    app.get("/contest/", async (req, res) => {
+      const { id } = req.query;
+
+      if (id) {
+        const result = await contestCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        const winnersIds = result?.winnerID?.map((id) => new ObjectId(id));
+        if (winnersIds) {
+          const foundDocuments = await userCollection
+            .find({ _id: { $in: winnersIds } })
+            .toArray();
+
+          //send the response  ===>
+          return res.send({ contest: result, winners: foundDocuments });
         }
-    
-        const result = await contestCollection.findOne({ _id: new ObjectId(id) });
-    
-        if (!result || !result.winnerID || result.winnerID.length === 0) {
-          return res.status(404).send('No contest found or no winner IDs available');
-        }
-    
-        const winnersIds = result?.winnerID?.map(id => new ObjectId(id));
-    
-        const foundDocuments = await userCollection.find({ _id: { $in: winnersIds } }).toArray();
-    
-        if (!foundDocuments || foundDocuments.length === 0) {
-          return res.status(404).send('No matching users found');
-        }
-    
-        return res.send({contest:result,winners:foundDocuments});
-      } catch (error) {
-        console.error('Error:', error);
-        return res.status(500).send('Internal Server Error');
       }
     });
 
-    
-
-
-
-
-
-
-
-
-
-
-
+    //  ============= user ===============
+    app.get("/users", async (req, res) => {
+      const result = await contestCollection.find().toArray();
+      return res.send(result);
+    });
 
     // ================== post api ==================
     //user
-    app.post('/createUser',async(req,res)=> {
-      const {email} = req.query
-      const user = req.body
-      
-      const isUserExist = await userCollection.findOne({email:email})
-      if(isUserExist) return 
+    app.post("/createUser", async (req, res) => {
+      const { email } = req.query;
+      const user = req.body;
 
-      const result = await userCollection.insertOne(user)
-      res.send(result)
-    })
+      const isUserExist = await userCollection.findOne({ email: email });
+      if (isUserExist) return;
 
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
 
     // =========== payment ==========
     // // payment intent
@@ -118,24 +106,43 @@ async function run() {
     //   res.send({
     //     clientSecret:paymentIntent.client_secret
     //   })
-    // })    
-
+    // })
 
     // ================== Patch method ==================
     // Increasing the new participant number
-    app.patch('/participateContest', async (req, res) => {
+    app.patch("/participateContest", async (req, res) => {
+      const { id, userEmail } = req.body;
+      const existingContest = await contestCollection.findOne({
+        _id: new ObjectId(id),
+      });
 
-        const { id } = req.body;
-        const existingContest = await contestCollection.findOne({_id:new ObjectId(id)})
-        const result = await contestCollection.updateOne(
-          { _id: new ObjectId(id)},
-          { $set: { participants: parseInt(existingContest?.participants) + 1} }
-        );
-    
-      res.send(result)
+      const contestSubmittedUser = await userCollection.findOne({
+        email: userEmail,
+      });
+
+      // If there is no user found, return
+      if (!contestSubmittedUser) {
+        return;
+      }
+
+      const updatedDoc = {
+        $push: {
+          attemptedContests: id, // Assuming the contest ID should be added here
+        },
+      };
+
+      await userCollection.updateOne({ email: userEmail }, updatedDoc);
+
+      console.log(id)
+
+      // update the particpants count in specific contest
+      const result = await contestCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { participants: parseInt(existingContest?.participants) + 1 } }
+      );
+
+      res.send(result);
     });
-    
-    
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -145,7 +152,6 @@ async function run() {
 }
 
 run().catch(console.dir);
-
 
 app.get("/", (req, res) => {
   res.send("ContestCraft is running");
