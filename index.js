@@ -3,10 +3,9 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 // const stripe = require('stripe')(process.env.VITE_STRIPE_SECRET_KEY);
 require("dotenv").config();
-
 
 // Middle ware
 app.use(express.json());
@@ -35,23 +34,33 @@ async function run() {
     const contestCollection = client.db("ContestCraft").collection("contests");
     const userCollection = client.db("ContestCraft").collection("users");
 
-
-
-
-
     /* ====================================
               JWT API
      ====================================*/
-     // jwt related api
-     app.post('/jwt', async (req, res) => {
+    // jwt related api
+    app.post("/jwt", async (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
       res.send({ token });
-    })
+    });
 
-
-
-
+    // middlewares
+    const verifyToken = (req, res, next) => {
+      console.log('inside verify token', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
 
     /* ====================================
               GET METHOD
@@ -119,19 +128,18 @@ async function run() {
       return res.send(result);
     });
 
-
     // participants
-    app.get('/participants/:id',async(req,res)=>{
+    app.get("/participants/:id", async (req, res) => {
       // const {id} = req.params
-      const contest = await contestCollection.findOne({_id:new ObjectId('65639c425031084f2d4ae08e')})
+      const contest = await contestCollection.findOne({
+        _id: new ObjectId("65639c425031084f2d4ae08e"),
+      });
 
-      const result = await userCollection.find({ email: { $in: contest.participants} }).toArray()
-
-      console.log(result)
-      res.send({contest,result})
-
-      
-    })
+      const result = await userCollection
+        .find({ email: { $in: contest.participants } })
+        .toArray();
+      res.send({ contest, result });
+    });
     /* ====================================
               POST METHOD
      ====================================*/
@@ -148,7 +156,7 @@ async function run() {
     });
 
     // create contest
-    app.post("/creatContest", async (req, res) => {
+    app.post("/creatContest",verifyToken, async (req, res) => {
       const { email } = req.query;
       const contestData = req.body;
       // get the contest creotof to store id
@@ -190,22 +198,23 @@ async function run() {
       const existingContest = await contestCollection.findOne({
         _id: new ObjectId(id),
       });
-      
+
       const contestSubmittedUser = await userCollection.findOne({
         email: userEmail,
       });
-     
+
       // If there is no user found, return
       if (!contestSubmittedUser) return;
 
       // If the user has already registered the contest, return
-      const isContestExist = contestSubmittedUser.participationDetails.attemptedContests.includes(
+      const isContestExist =
+        contestSubmittedUser.participationDetails.attemptedContests.includes(
           id
         );
-       
+
       if (isContestExist) return res.send({ error: "Already participated " });
 
-      console.log(isContestExist)
+      console.log(isContestExist);
       // updating ateh attempted contest when user register for a contest
       const updatedDoc = {
         $push: {
