@@ -121,26 +121,29 @@ async function run() {
       });
 
       // If there is no user found, return
-      if (!contestSubmittedUser) {
-        return;
-      }
+      if (!contestSubmittedUser) return;
 
+      // If the user has already registered the contest, return
+      const isContestExist =
+        contestSubmittedUser.participationDetails.attemptedContests.includes(
+          id
+        );
+      if (isContestExist) return res.send({ error: "Already reagistered " });
+
+      // updating ateh attempted contest when user register for a contest
       const updatedDoc = {
         $push: {
-          attemptedContests: id, // Assuming the contest ID should be added here
+          "participationDetails.attemptedContests": id,
         },
       };
 
       await userCollection.updateOne({ email: userEmail }, updatedDoc);
-
-      console.log(id)
 
       // update the particpants count in specific contest
       const result = await contestCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { participants: parseInt(existingContest?.participants) + 1 } }
       );
-
       res.send(result);
     });
 
