@@ -34,8 +34,7 @@ async function run() {
     const contestCollection = client.db("ContestCraft").collection("contests");
     const userCollection = client.db("ContestCraft").collection("users");
 
-
-     /* ====================================
+    /* ====================================
               GET METHOD
      ====================================*/
     //======== Contest ==============
@@ -61,25 +60,39 @@ async function run() {
           _id: new ObjectId(id),
         });
 
-        const winnersIds = result?.winnerID?.map((id) => new ObjectId(id));
-        if (winnersIds) {
-          const foundDocuments = await userCollection
-            .find({ _id: { $in: winnersIds } })
-            .toArray();
+        if (result) {
+          const winnersIds = result?.winnerID?.map((id) => new ObjectId(id));
 
-          //send the response  ===>
-          return res.send({ contest: result, winners: foundDocuments });
+          if (winnersIds) {
+            const foundDocuments = await userCollection
+              .find({ _id: { $in: winnersIds } })
+              .toArray();
+
+            //send the response  ===>
+            return res.send({ contest: result, winners: foundDocuments });
+          }
         }
       }
     });
 
     // get contests based on creator id
-    app.get('/contests/:id',async(req,res)=> {
-      const {id} = req.params
-      const result = await contestCollection.find({creatorID:id}).toArray()
-      res.send(result)
-    })
+    app.get("/contests/:email", async (req, res) => {
+      const { email } = req.params;
 
+      if (email) {
+        const creator = await userCollection.findOne({ email: email });
+
+        if (creator) {
+          const result = await contestCollection
+            .find({ creatorID: new ObjectId(creator._id.toString()) })
+            .toArray();
+          console.log(result);
+          res.send(result);
+        } else {
+          res.status(404).send({ message: "No data found" });
+        }
+      }
+    });
 
     //  ============= user ===============
     app.get("/users", async (req, res) => {
@@ -87,6 +100,19 @@ async function run() {
       return res.send(result);
     });
 
+
+    // participants
+    app.get('/participants/:id',async(req,res)=>{
+      // const {id} = req.params
+      const contest = await contestCollection.findOne({_id:new ObjectId('65639c425031084f2d4ae08e')})
+
+      const result = await userCollection.find({ email: { $in: contest.participants} }).toArray()
+
+      console.log(result)
+      res.send({contest,result})
+
+      
+    })
     /* ====================================
               POST METHOD
      ====================================*/
@@ -102,27 +128,18 @@ async function run() {
       res.send(result);
     });
 
-    // create contest 
-    app.post('/creatContest',async(req,res)=> {
-
-      const {email} = req.query
-      const contestData = req.body
-      // get the contest creotof to store id 
-      const contestCreator = await userCollection.findOne({email:email})
-      contestData.creatorID = contestCreator._id
+    // create contest
+    app.post("/creatContest", async (req, res) => {
+      const { email } = req.query;
+      const contestData = req.body;
+      // get the contest creotof to store id
+      const contestCreator = await userCollection.findOne({ email: email });
+      contestData.creatorID = contestCreator?._id;
 
       // add to the database
-      const result = await contestCollection.insertOne(contestData)
-      res.send(result)  
-    })
-
-
-
-
-
-
-
-
+      const result = await contestCollection.insertOne(contestData);
+      res.send(result);
+    });
 
     // =========== payment ==========
     // // payment intent
@@ -144,31 +161,32 @@ async function run() {
     //   })
     // })
 
-
-  /* ====================================
+    /* ====================================
               PATCH METHOD
      ====================================*/
     // Increasing the new participant number
-    app.patch("/participateContest", async (req, res) => {
+    app.post("/participateContest", async (req, res) => {
       const { id, userEmail } = req.body;
+
       const existingContest = await contestCollection.findOne({
         _id: new ObjectId(id),
       });
-
+      
       const contestSubmittedUser = await userCollection.findOne({
         email: userEmail,
       });
-
+     
       // If there is no user found, return
       if (!contestSubmittedUser) return;
 
       // If the user has already registered the contest, return
-      const isContestExist =
-        contestSubmittedUser.participationDetails.attemptedContests.includes(
+      const isContestExist = contestSubmittedUser.participationDetails.attemptedContests.includes(
           id
         );
-      if (isContestExist) return res.send({ error: "Already reagistered " });
+       
+      if (isContestExist) return res.send({ error: "Already participated " });
 
+      console.log(isContestExist)
       // updating ateh attempted contest when user register for a contest
       const updatedDoc = {
         $push: {
@@ -179,16 +197,19 @@ async function run() {
       await userCollection.updateOne({ email: userEmail }, updatedDoc);
 
       // update the particpants count in specific contest
+
+      const updatedContestParticipants = {
+        $push: {
+          participants: userEmail,
+        },
+      };
       const result = await contestCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { participants: parseInt(existingContest?.participants) + 1 } }
+        updatedContestParticipants
       );
       res.send(result);
     });
 
-
-
-   
     // change role
     // Update the role for a specific user based on the received data
     app.patch("/role", async (req, res) => {
@@ -215,38 +236,39 @@ async function run() {
     //contest
     app.patch("/contest", async (req, res) => {
       const { id } = req.query;
-      
+
       const result = await contestCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: {status:'approved' } }
+        { $set: { status: "approved" } }
       );
 
-      res.send(result)
-  })
+      res.send(result);
+    });
 
-
-
-  /* ====================================
+    /* ====================================
               DELETE METHOD
      ====================================*/
     //user
-    app.delete('/user',async(req,res)=>{
-      const {id} = req.query
-      if(id){
-        const deleteUser = await userCollection.deleteOne({_id: new ObjectId(id)})
-        res.send(deleteUser)
+    app.delete("/user", async (req, res) => {
+      const { id } = req.query;
+      if (id) {
+        const deleteUser = await userCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(deleteUser);
       }
-    })
-    
-    // contest
-    app.delete('/contest',async(req,res)=>{
-      const {id} = req.query
-      if(id){
-        const result = await contestCollection.deleteOne({_id: new ObjectId(id)})
-        res.send(result)
-      }
-    })
+    });
 
+    // contest
+    app.delete("/contest", async (req, res) => {
+      const { id } = req.query;
+      if (id) {
+        const result = await contestCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      }
+    });
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
