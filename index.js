@@ -75,7 +75,9 @@ async function run() {
       return res.send(result);
     });
 
-    // ================== post api ==================
+    // ====================================
+    //Post method
+    // ====================================
     //user
     app.post("/createUser", async (req, res) => {
       const { email } = req.query;
@@ -146,30 +148,43 @@ async function run() {
       );
       res.send(result);
     });
-  
+
+
+
+   
     // change role
-   // Update the role for a specific user based on the received data
-app.patch('/role', async (req, res) => {
-  const { role, userId } = req.body;
-  
-  // Check if role and userId are provided
-  if (!role || !userId) {
-    return res.status(400).json({ error: 'Role and User ID are required' });
-  }
+    // Update the role for a specific user based on the received data
+    app.patch("/role", async (req, res) => {
+      const { role, userId } = req.body;
 
-  try {
-    // Updating the role for the user with the given userId
-    const result = await userCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: { role: role } }
-    );
-    res.send(result)
+      // Check if role and userId are provided
+      if (!role || !userId) {
+        return res.status(400).json({ error: "Role and User ID are required" });
+      }
 
-  } catch (error) {
-    console.error('Error updating role:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+      try {
+        // Updating the role for the user with the given userId
+        const result = await userCollection.updateOne(
+          { _id: new ObjectId(userId) },
+          { $set: { role: role } }
+        );
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating role:", error);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+  // ====================================
+    //Delete method
+    // ====================================
+    app.delete('/user',async(req,res)=>{
+      const {id} = req.query
+      if(id){
+        const deleteUser = await userCollection.deleteOne({_id: new ObjectId(id)})
+        res.send(deleteUser)
+      }
+    })
 
 
     console.log(
