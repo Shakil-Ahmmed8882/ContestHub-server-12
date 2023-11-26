@@ -178,11 +178,21 @@ async function run() {
   // ====================================
     //Delete method
     // ====================================
+    //user
     app.delete('/user',async(req,res)=>{
       const {id} = req.query
       if(id){
         const deleteUser = await userCollection.deleteOne({_id: new ObjectId(id)})
         res.send(deleteUser)
+      }
+    })
+    
+    // contest
+    app.delete('/contest',async(req,res)=>{
+      const {id} = req.query
+      if(id){
+        const result = await contestCollection.deleteOne({_id: new ObjectId(id)})
+        res.send(result)
       }
     })
 
