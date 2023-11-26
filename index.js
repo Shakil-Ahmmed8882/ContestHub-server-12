@@ -47,8 +47,9 @@ async function run() {
     });
 
     // middlewares
+    //Verify token
     const verifyToken = (req, res, next) => {
-      console.log('inside verify token', req.headers.authorization);
+      console.log("inside verify token", req.headers.authorization);
       if (!req.headers.authorization) {
         return res.status(401).send({ message: "unauthorized access" });
       }
@@ -60,6 +61,18 @@ async function run() {
         req.decoded = decoded;
         next();
       });
+    };
+
+    // Verifying admin here
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
     };
 
     /* ====================================
@@ -156,7 +169,7 @@ async function run() {
     });
 
     // create contest
-    app.post("/creatContest",verifyToken, async (req, res) => {
+    app.post("/creatContest", verifyToken, async (req, res) => {
       const { email } = req.query;
       const contestData = req.body;
       // get the contest creotof to store id
