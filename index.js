@@ -209,9 +209,9 @@ async function run() {
         if (!user) {
           return res.status(404).json({ error: "User not found" });
         }
-        
+
         // find the specific user wining contest
-        if(typeWinning == "winning"){
+        if (typeWinning == "winning") {
           const winingContestIds = user.participationDetails.wonContests || [];
           const result = await contestCollection.find().toArray();
 
@@ -220,11 +220,10 @@ async function run() {
             winingContestIds.includes(contest._id.toString())
           );
           // if no winning contest
-          if(!winingContest) return res.send({error:'no data found'})
+          if (!winingContest) return res.send({ error: "no data found" });
           // else send the wining data found
-          return res.send(winingContest)
+          return res.send(winingContest);
         }
-
 
         const attemptedContestsIds = user.registeredContests || [];
 
@@ -242,41 +241,77 @@ async function run() {
       }
     });
 
-
-
-
     // Get top 6 participated contests
     app.get("/topParticipatedContests", async (req, res) => {
       try {
-        const topParticipatedContests = await contestCollection.aggregate([
-          { $match: { participants: { $exists: true, $ne: [] } } }, // Filter contests with participants
-          {
-            $project: {
-              contestName: 1,
-              image: 1,
-              description: 1,
-              prizeMoney: 1,
-              taskSubmissionInstructions: 1,
-              tags: 1,
-              deadline: 1,
-              status: 1,
-              winnerID: 1,
-              type: 1,
-              creatorID: 1,
-              participantsCount: { $size: "$participants" } // Compute participants count
-            }
-          }, 
-          { $sort: { participantsCount: -1 } }, // Sort by participant count in descending order
-          { $limit: 6 } // Limit to top 6 contests
-        ]).toArray();
-    
+        const topParticipatedContests = await contestCollection
+          .aggregate([
+            // Filtering contests with participants
+            { $match: { participants: { $exists: true, $ne: [] } } },
+            {
+              $project: {
+                contestName: 1,
+                image: 1,
+                description: 1,
+                prizeMoney: 1,
+                taskSubmissionInstructions: 1,
+                tags: 1,
+                deadline: 1,
+                status: 1,
+                winnerID: 1,
+                type: 1,
+                creatorID: 1,
+                // Computing participants count
+                participantsCount: { $size: "$participants" },
+              },
+            },
+            // Sorting by participant count in descending order
+            { $sort: { participantsCount: -1 } },
+            // Limiting to top 6 contests
+            { $limit: 6 },
+          ])
+          .toArray();
+
         res.json(topParticipatedContests);
       } catch (err) {
         console.error("Error:", err);
         res.status(500).json({ error: "Internal server error" });
       }
     });
-    
+
+    // get contest by tags as search reasult
+    // search contests by tags
+    app.get("/searchContestsByTag", async (req, res) => {
+      try {
+        const searchQuery = req.query.searchQuery;
+        console.log(searchQuery);
+
+        if (!searchQuery || searchQuery.trim() === "") {
+          return res
+            .status(400)
+            .json({ error: "Search query is missing or empty." });
+        }
+
+        // Perform a case-insensitive search on tags field
+        const searchResults = await contestCollection
+          .find({ tags: { $regex: searchQuery, $options: "i" } })
+          .toArray();
+
+        res.send(searchResults);
+      } catch (err) {
+        console.error("Error:", err);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
+
+    // get all the contest creators
+    app.get("/allContestCreators", async (req, res) => {
+      const result = await userCollection
+        .find({ role: "contest_creator" })
+        .toArray();
+      res.send(result);
+    });
+
     /* ====================================
               POST METHOD
      ====================================*/
@@ -305,32 +340,8 @@ async function run() {
       res.send(result);
     });
 
-    // =========== payment ==========
-    // // payment intent
-    // app.post("/create-payment-intent", async (req, res) => {
-    //   const { prizeMoney } = req.body;
-    //   const IntPrice = parseInt(prizeMoney)
-    //   const amount = IntPrice * 100
-
-    //   console.log('sent cart amount',amount)
-    //   // return
-    //   const paymentIntent = await stripe.paymentIntents.create({
-    //     amount:amount,
-    //     currency:'usd',
-    //     payment_method_types:['card']
-    //   })
-
-    //   res.send({
-    //     clientSecret:paymentIntent.client_secret
-    //   })
-    // })
-
-    /* ====================================
-              PATCH METHOD
-     ====================================*/
-    // Increasing the new participant number after the payment
     app.post("/participateContest", async (req, res) => {
-      const { id,userEmail} = req.body;
+      const { id, userEmail } = req.body;
 
       const contestSubmittedUser = await userCollection.findOne({
         email: userEmail,
@@ -341,7 +352,9 @@ async function run() {
 
       // If the user has already registered the contest, return
       const isContestExist =
-        contestSubmittedUser.participationDetails.attemptedContests.includes(id);
+        contestSubmittedUser.participationDetails.attemptedContests.includes(
+          id
+        );
 
       if (isContestExist) return res.send({ error: "Already participated " });
 
@@ -367,8 +380,32 @@ async function run() {
       );
       res.send(result);
     });
+    // =========== payment ==========
+    // // payment intent
+    // app.post("/create-payment-intent", async (req, res) => {
+    //   const { prizeMoney } = req.body;
+    //   const IntPrice = parseInt(prizeMoney)
+    //   const amount = IntPrice * 100
 
-    // store the registered contests 
+    //   console.log('sent cart amount',amount)
+    //   // return
+    //   const paymentIntent = await stripe.paymentIntents.create({
+    //     amount:amount,
+    //     currency:'usd',
+    //     payment_method_types:['card']
+    //   })
+
+    //   res.send({
+    //     clientSecret:paymentIntent.client_secret
+    //   })
+    // })
+
+    /* ====================================
+              PATCH METHOD
+     ====================================*/
+    // Increasing the new participant number after the payment
+
+    // store the registered contests
     app.post("/registeredContest", async (req, res) => {
       const { id, userEmail } = req.body;
 
@@ -384,8 +421,7 @@ async function run() {
       if (!registeredUser) return;
 
       // If the user has already registered the contest, return
-      const isContestExist =
-        registeredUser?.registeredContests?.includes(id);
+      const isContestExist = registeredUser?.registeredContests?.includes(id);
 
       if (isContestExist) return res.send({ error: "Already participated " });
 
@@ -396,7 +432,10 @@ async function run() {
         },
       };
 
-      const result = await userCollection.updateOne({ email: userEmail }, updatedDoc);
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        updatedDoc
+      );
       res.send(result);
     });
 
@@ -433,6 +472,44 @@ async function run() {
       );
 
       res.send(result);
+    });
+
+    // find the best contest creators
+    app.patch("/bestContestCreator/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const rating = parseInt(req.body.newValue);
+
+        //getting the creator
+        const creator = await userCollection.findOne({ email: email });
+
+        // responsd error if no creator found
+        if (!creator) {
+          return res.status(404).send({ error: "No user found" });
+        }
+
+        // generate the schema for the doc to be updated
+        const updatedDoc = {
+          $set: {
+            bestCreatorRating: rating,
+          },
+        };
+
+        const updateResult = await userCollection.updateOne(
+          { email: email },
+          updatedDoc
+        );
+        res.send(updateResult);
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Start the server
+    const PORT = 3000;
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
     });
 
     /* ====================================
