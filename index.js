@@ -163,12 +163,21 @@ async function run() {
 
 
 
-    // Checking role
+    // Checking admin role
     app.get('/users/admin/:email', async (req, res) => {
       const email = req.params.email; // Accessing the 'email' parameter correctly
       const  user = await userCollection.findOne({email:email})
       const isAdmin = user?.role === 'admin'
       res.send({isAdmin})
+    });
+    // Checking creator role
+    app.get('/users/creator/:email', async (req, res) => {
+      const email = req.params.email; // Accessing the 'email' parameter correctly
+      const  user = await userCollection.findOne({email:email})
+
+
+      const isCreator = user?.role === 'contest_creator'
+      res.send({isCreator})
     });
     /* ====================================
               POST METHOD
