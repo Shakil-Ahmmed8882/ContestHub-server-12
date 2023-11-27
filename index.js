@@ -175,48 +175,66 @@ async function run() {
       res.send({ contest, result });
     });
 
-
-
     // get the user participated contests after the payment
     // app.get("/user/participatedContests/:email", async (req, res) => {
     //   try {
     //     const email = req.params.email;
     //     const user = await userCollection.findOne({ email: email });
-    
+
     //     if (!user) {
     //       return res.status(404).json({ error: "User not found" });
     //     }
-    
+
     //     const attemptedContestsIds = user.participationDetails.attemptedContests || [];
-    
+
     //     const result = await contestCollection.find().toArray();
-        
+
     //     // Filter contests whose IDs are in attemptedContestsIds
     //     const filteredContests = result.filter(contest => attemptedContestsIds.includes(contest._id.toString()));
-    
+
     //     res.json({ user, attemptedContests: filteredContests });
     //   } catch (err) {
     //     console.error("Error:", err);
     //     res.status(500).json({ error: "Internal server error" });
     //   }
     // });
-
-    app.get("/user/participatedContests/:email", async (req, res) => {
+    // get registered contests
+    app.get("/user/participatedContests/:email/:winning", async (req, res) => {
       try {
         const email = req.params.email;
+        const typeWinning = req.params.winning;
+
         const user = await userCollection.findOne({ email: email });
-    
+
         if (!user) {
           return res.status(404).json({ error: "User not found" });
         }
-    
-        const attemptedContestsIds = user.registeredContests || [];
-    
-        const result = await contestCollection.find().toArray();
         
+        // find the specific user wining contest
+        if(typeWinning == "winning"){
+          const winingContestIds = user.participationDetails.wonContests || [];
+          const result = await contestCollection.find().toArray();
+
+          // Filter contests whose IDs are in attemptedContestsIds
+          const winingContest = result.filter((contest) =>
+            winingContestIds.includes(contest._id.toString())
+          );
+          // if no winning contest
+          if(!winingContest) return res.send({error:'no data found'})
+          // else send the wining data found
+          return res.send(winingContest)
+        }
+
+
+        const attemptedContestsIds = user.registeredContests || [];
+
+        const result = await contestCollection.find().toArray();
+
         // Filter contests whose IDs are in attemptedContestsIds
-        const filteredContests = result.filter(contest => attemptedContestsIds.includes(contest._id.toString()));
-    
+        const filteredContests = result.filter((contest) =>
+          attemptedContestsIds.includes(contest._id.toString())
+        );
+
         res.json({ attemptedContests: filteredContests });
       } catch (err) {
         console.error("Error:", err);
@@ -321,7 +339,6 @@ async function run() {
     //   res.send(result);
     // });
 
-
     app.post("/participateContest", async (req, res) => {
       const { id, userEmail } = req.body;
 
@@ -338,9 +355,7 @@ async function run() {
 
       // If the user has already registered the contest, return
       const isContestExist =
-        contestSubmittedUser.registeredContests.includes(
-          id
-        );
+        contestSubmittedUser.registeredContests.includes(id);
 
       if (isContestExist) return res.send({ error: "Already participated " });
 
@@ -366,8 +381,6 @@ async function run() {
       );
       res.send(result);
     });
-
-
 
     // change role
     // Update the role for a specific user based on the received data
