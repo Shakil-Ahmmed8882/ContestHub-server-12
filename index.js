@@ -242,6 +242,41 @@ async function run() {
       }
     });
 
+
+
+
+    // Get top 6 participated contests
+    app.get("/topParticipatedContests", async (req, res) => {
+      try {
+        const topParticipatedContests = await contestCollection.aggregate([
+          { $match: { participants: { $exists: true, $ne: [] } } }, // Filter contests with participants
+          {
+            $project: {
+              contestName: 1,
+              image: 1,
+              description: 1,
+              prizeMoney: 1,
+              taskSubmissionInstructions: 1,
+              tags: 1,
+              deadline: 1,
+              status: 1,
+              winnerID: 1,
+              type: 1,
+              creatorID: 1,
+              participantsCount: { $size: "$participants" } // Compute participants count
+            }
+          }, 
+          { $sort: { participantsCount: -1 } }, // Sort by participant count in descending order
+          { $limit: 6 } // Limit to top 6 contests
+        ]).toArray();
+    
+        res.json(topParticipatedContests);
+      } catch (err) {
+        console.error("Error:", err);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+    
     /* ====================================
               POST METHOD
      ====================================*/
@@ -294,57 +329,8 @@ async function run() {
               PATCH METHOD
      ====================================*/
     // Increasing the new participant number after the payment
-    // app.post("/participateContest", async (req, res) => {
-    //   const { id, userEmail } = req.body;
-
-    //   const existingContest = await contestCollection.findOne({
-    //     _id: new ObjectId(id),
-    //   });
-
-    //   const contestSubmittedUser = await userCollection.findOne({
-    //     email: userEmail,
-    //   });
-
-    //   // If there is no user found, return
-    //   if (!contestSubmittedUser) return;
-
-    //   // If the user has already registered the contest, return
-    //   const isContestExist =
-    //     contestSubmittedUser.participationDetails.attemptedContests.includes(
-    //       id
-    //     );
-
-    //   if (isContestExist) return res.send({ error: "Already participated " });
-
-    //   // updating ateh attempted contest when user register for a contest
-    //   const updatedDoc = {
-    //     $push: {
-    //       "participationDetails.attemptedContests": id,
-    //     },
-    //   };
-
-    //   await userCollection.updateOne({ email: userEmail }, updatedDoc);
-
-    //   // update the particpants count in specific contest
-
-    //   const updatedContestParticipants = {
-    //     $push: {
-    //       participants: userEmail,
-    //     },
-    //   };
-    //   const result = await contestCollection.updateOne(
-    //     { _id: new ObjectId(id) },
-    //     updatedContestParticipants
-    //   );
-    //   res.send(result);
-    // });
-
     app.post("/participateContest", async (req, res) => {
-      const { id, userEmail } = req.body;
-
-      const existingContest = await contestCollection.findOne({
-        _id: new ObjectId(id),
-      });
+      const { id,userEmail} = req.body;
 
       const contestSubmittedUser = await userCollection.findOne({
         email: userEmail,
@@ -355,14 +341,14 @@ async function run() {
 
       // If the user has already registered the contest, return
       const isContestExist =
-        contestSubmittedUser.registeredContests.includes(id);
+        contestSubmittedUser.participationDetails.attemptedContests.includes(id);
 
       if (isContestExist) return res.send({ error: "Already participated " });
 
       // updating ateh attempted contest when user register for a contest
       const updatedDoc = {
         $push: {
-          registeredContests: id,
+          "participationDetails.attemptedContests": id,
         },
       };
 
@@ -379,6 +365,38 @@ async function run() {
         { _id: new ObjectId(id) },
         updatedContestParticipants
       );
+      res.send(result);
+    });
+
+    // store the registered contests 
+    app.post("/registeredContest", async (req, res) => {
+      const { id, userEmail } = req.body;
+
+      const existingContest = await contestCollection.findOne({
+        _id: new ObjectId(id),
+      });
+
+      const registeredUser = await userCollection.findOne({
+        email: userEmail,
+      });
+
+      // If there is no user found, return
+      if (!registeredUser) return;
+
+      // If the user has already registered the contest, return
+      const isContestExist =
+        registeredUser?.registeredContests?.includes(id);
+
+      if (isContestExist) return res.send({ error: "Already participated " });
+
+      // updating ateh attempted contest when user register for a contest
+      const updatedDoc = {
+        $push: {
+          registeredContests: id,
+        },
+      };
+
+      const result = await userCollection.updateOne({ email: userEmail }, updatedDoc);
       res.send(result);
     });
 
