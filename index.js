@@ -82,15 +82,22 @@ async function run() {
     //get all by type
     app.get("/contests", async (req, res) => {
       const { type } = req.query;
-
+    
       let query = {};
-
-      if (type) {
-        query = { type: type };
+    
+      if (type === "All" || !type) {
+        query = {};
       }
+    
+      if (type && type !== "All") {
+        query = { type: type };
+        console.log(`Loading data for type: ${type}`);
+      }
+    
       const result = await contestCollection.find(query).toArray();
       res.send(result);
     });
+    
 
     // get single by id
     app.get("/contest/", async (req, res) => {
@@ -116,6 +123,7 @@ async function run() {
       }
     });
 
+
     // get contests based on creator id
     app.get("/contests/:email", async (req, res) => {
       const { email } = req.params;
@@ -127,7 +135,6 @@ async function run() {
           const result = await contestCollection
             .find({ creatorID: new ObjectId(creator._id.toString()) })
             .toArray();
-          console.log(result);
           res.send(result);
         } else {
           res.status(404).send({ message: "No data found" });
@@ -153,6 +160,16 @@ async function run() {
         .toArray();
       res.send({ contest, result });
     });
+
+
+
+    // Checking role
+    app.get('/users/admin/:email', async (req, res) => {
+      const email = req.params.email; // Accessing the 'email' parameter correctly
+      const  user = await userCollection.findOne({email:email})
+      const isAdmin = user?.role === 'admin'
+      res.send({isAdmin})
+    });
     /* ====================================
               POST METHOD
      ====================================*/
@@ -169,7 +186,7 @@ async function run() {
     });
 
     // create contest
-    app.post("/creatContest", verifyToken, async (req, res) => {
+    app.post("/creatContest", async (req, res) => {
       const { email } = req.query;
       const contestData = req.body;
       // get the contest creotof to store id
@@ -227,7 +244,6 @@ async function run() {
 
       if (isContestExist) return res.send({ error: "Already participated " });
 
-      console.log(isContestExist);
       // updating ateh attempted contest when user register for a contest
       const updatedDoc = {
         $push: {
