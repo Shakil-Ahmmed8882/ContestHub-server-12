@@ -198,6 +198,25 @@ async function run() {
     //     res.status(500).json({ error: "Internal server error" });
     //   }
     // });
+  
+    // get a user by email
+    app.get("/user/:email", async (req, res) => {
+      
+        const email = req.params.email;
+        const user = await userCollection.findOne({ email: email });
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+         }
+        
+        //  calculating the attempted and won contestes
+        const attemptedContests = user.participationDetails.attemptedContests
+        const wonContests = user.participationDetails.wonContests
+         res.send({attemptedContests,wonContests})
+
+      })
+
+
     // get registered contests
     app.get("/user/participatedContests/:email/:winning", async (req, res) => {
       try {
