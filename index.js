@@ -4,6 +4,8 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const { useParams } = require("react-router-dom");
+
 // const stripe = require('stripe')(process.env.VITE_STRIPE_SECRET_KEY);
 require("dotenv").config();
 
@@ -11,7 +13,8 @@ require("dotenv").config();
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: ["http://localhost:5173", "http://localhost:5174","http://localhost:5175"],
+    // origin: ["https://contestcraft-350e1.web.app"],
     credentials: true,
   })
 );
@@ -40,9 +43,12 @@ async function run() {
     // jwt related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
+
+      
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "1h",
       });
+      
       res.send({ token });
     });
 
@@ -323,6 +329,22 @@ async function run() {
       }
     });
 
+
+    // getting one contest participants
+    app.get('/contestParticipants/:id',async(req,res)=> {
+      const id = req.params.id
+
+      const contest = await contestCollection.findOne({_id:new ObjectId(id)})
+
+      const participants = contest.participants
+
+      if(participants.length > 0) {
+        const participantsWithEmails = participants.map(email =>  email );
+        console.log(participantsWithEmails)
+      }
+      res.send(participants)
+
+    })
     // get all the contest creators
     app.get("/allContestCreators", async (req, res) => {
       const result = await userCollection
@@ -331,6 +353,18 @@ async function run() {
       res.send(result);
     });
 
+
+
+
+
+    // get single contest by id
+    app.get("/singleContest/:id", async (req, res) => {
+      const {id} = req.params
+      const contest = await contestCollection.findOne({_id:new ObjectId(id)})
+      // sending the found contest to the client
+      res.send(contest)
+    })
+     
     /* ====================================
               POST METHOD
      ====================================*/
@@ -338,6 +372,8 @@ async function run() {
     app.post("/createUser", async (req, res) => {
       const { email } = req.query;
       const user = req.body;
+
+      console.log(user)
 
       const isUserExist = await userCollection.findOne({ email: email });
       if (isUserExist) return;
@@ -418,6 +454,51 @@ async function run() {
     //     clientSecret:paymentIntent.client_secret
     //   })
     // })
+
+    /* ====================================
+              PUT METHOD
+     ====================================*/
+     // Updating the contest
+     app.put('/editContest/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const updatedData = req.body; // Data coming from the client-side
+    
+        // Retrieve the existing contest data from the database
+        const existingContest = await contestCollection.findOne({ _id: new ObjectId(id) });
+    
+        if (existingContest) {
+          const updateFields = {};
+    
+          // Compare and construct an update query for each field
+          Object.keys(updatedData).forEach(key => {
+            if (JSON.stringify(existingContest[key]) !== JSON.stringify(updatedData[key])) {
+              updateFields[key] = updatedData[key];
+            }
+          });
+    
+          if (Object.keys(updateFields).length > 0) {
+            const result = await contestCollection.updateOne(
+              { _id: new ObjectId(id) },
+              { $set: updateFields }
+            );
+    
+            if (result.modifiedCount > 0) {
+              res.status(200).json({ message: 'Contest updated successfully' });
+            } else {
+              res.status(500).json({ message: 'Failed to update contest' });
+            }
+          } else {
+            res.status(200).json({ message: 'No changes detected. Contest remains unchanged' });
+          }
+        } else {
+          res.status(404).json({ message: 'Contest not found' });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
 
     /* ====================================
               PATCH METHOD
@@ -554,7 +635,7 @@ async function run() {
         });
         res.send(result);
       }
-    });
+      })
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
